@@ -1,0 +1,116 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.scene.control.Button?>
+<?import javafx.scene.control.ChoiceBox?>
+<?import javafx.scene.control.Label?>
+<?import javafx.scene.control.TableColumn?>
+<?import javafx.scene.control.TableView?>
+<?import javafx.scene.layout.AnchorPane?>
+<?import javafx.scene.paint.Color?>
+<?import javafx.scene.paint.LinearGradient?>
+<?import javafx.scene.paint.Stop?>
+<?import javafx.scene.shape.Rectangle?>
+<?import javafx.scene.text.Font?>
+
+<AnchorPane prefHeight="600.0" prefWidth="800.0" xmlns="http://javafx.com/javafx/21" xmlns:fx="http://javafx.com/fxml/1" fx:controller="com.example.project02.controllers.AdminWorkDetailsController">
+    <children>
+      <Rectangle arcHeight="5.0" arcWidth="5.0" height="600.0" stroke="#37a381" strokeType="INSIDE" width="800.0">
+         <fill>
+            <LinearGradient endX="1.0" endY="1.0">
+               <stops>
+                  <Stop>
+                     <color>
+                        <Color red="0.5098039507865906" green="0.772549033164978" blue="0.5098039507865906" />
+                     </color>
+                  </Stop>
+                  <Stop offset="0.006711409395973154">
+                     <color>
+                        <Color red="0.5098039507865906" green="0.772549033164978" blue="0.5098039507865906" />
+                     </color>
+                  </Stop>
+                  <Stop offset="1.0">
+                     <color>
+                        <Color red="0.29019609093666077" green="0.7176470756530762" blue="0.5921568870544434" />
+                     </color>
+                  </Stop>
+               </stops>
+            </LinearGradient>
+         </fill>
+      </Rectangle>
+      <Label fx:id="workLabel" layoutX="41.0" layoutY="86.0" text="workLabel" textFill="WHITE">
+         <font>
+            <Font name="System Bold" size="17.0" />
+         </font>
+      </Label>
+      <Label layoutX="40.0" layoutY="120.0" text="รายละเอียดงาน" textFill="WHITE">
+         <font>
+            <Font size="15.0" />
+         </font></Label>
+      <Label fx:id="detailsLabel" alignment="TOP_LEFT" layoutX="41.0" layoutY="145.0" prefHeight="95.0" prefWidth="734.0" text="detailsLabel" textFill="WHITE" wrapText="true">
+         <font>
+            <Font size="15.0" />
+         </font></Label>
+      <Label layoutX="41.0" layoutY="244.0" text="รายชื่อผู้รับผิดชอบ :" textFill="WHITE">
+         <font>
+            <Font size="13.0" />
+         </font></Label>
+      <Label layoutX="334.0" layoutY="277.0" text="เพิ่มผู้รับผิดชอบ" textFill="WHITE">
+         <font>
+            <Font size="15.0" />
+         </font></Label>
+      <Label layoutX="332.0" layoutY="429.0" text="คลิกเลือกผู้รับผิดชอบในรายชื่อ แล้วกด &quot;ลบ&quot; เพิ่อยกเลิกงานของผู้รับผิดชอบ" textFill="WHITE">
+         <font>
+            <Font size="13.0" />
+         </font></Label>
+      <Label layoutX="143.0" layoutY="244.0" text="คลิกสองครั้งในรายชื่อเพื่อดูรายละเอียดงานของผู้รับผิดชอบแต่ละคน" textFill="WHITE">
+         <font>
+            <Font size="13.0" />
+         </font></Label>
+      <Button layoutX="332.0" layoutY="452.0" mnemonicParsing="false" onAction="#handleEraseButtonAction" text="ลบผู้รับผิดชอบ">
+         <font>
+            <Font size="15.0" />
+         </font></Button>
+      <Button layoutX="332.0" layoutY="343.0" mnemonicParsing="false" onAction="#handleAddButtonAction" text="เพิ่มผู้รับผิดชอบ">
+         <font>
+            <Font size="15.0" />
+         </font></Button>
+      <ChoiceBox fx:id="workersChoiceBox" layoutX="332.0" layoutY="307.0" prefHeight="25.0" prefWidth="211.0" />
+      <TableView fx:id="workersTable" layoutX="35.0" layoutY="274.0" onMouseClicked="#handleWorkerDoubleClickAction" prefHeight="287.0" prefWidth="281.0">
+        <columns>
+          <TableColumn fx:id="nameColumn" prefWidth="193.33330917358398" text="ชื่อคนงาน" />
+          <TableColumn fx:id="statusColumn" prefWidth="87.33338928222656" text="สถานะงาน" />
+        </columns>
+      </TableView>
+      <Rectangle arcHeight="5.0" arcWidth="5.0" fill="#def25d" height="70.0" stroke="#def25d" strokeType="INSIDE" width="800.0" />
+      <Label layoutX="23.0" layoutY="14.0" text="ผู้ดูแล |" textFill="#506405">
+         <font>
+            <Font size="15.0" />
+         </font>
+      </Label>
+      <Label fx:id="loginNameLabel" layoutX="90.0" layoutY="14.0" text="loginNameLabel" textFill="#506405">
+         <font>
+            <Font size="15.0" />
+         </font>
+      </Label>
+      <Button layoutX="701.0" layoutY="19.0" mnemonicParsing="false" onAction="#handleLogoutButtonAction" text="ลงชื่อออก">
+         <font>
+            <Font size="15.0" />
+         </font>
+      </Button>
+      <Label layoutX="23.0" layoutY="35.0" text="หน้าหลัก &gt;&gt; จัดการแผนงาน &gt;&gt; งานทั้งหมดของแผน &gt;&gt; " textFill="#506405">
+         <font>
+            <Font size="15.0" />
+         </font>
+      </Label>
+      <Label layoutX="354.0" layoutY="35.0" text="รายละเอียดของงาน" textFill="#506405">
+         <font>
+            <Font name="System Bold" size="15.0" />
+         </font>
+      </Label>
+      <Button layoutX="711.0" layoutY="529.0" mnemonicParsing="false" onAction="#handleBackButtonAction" text="กลับ">
+         <font>
+            <Font size="15.0" />
+         </font>
+      </Button>
+    </children>
+</AnchorPane>

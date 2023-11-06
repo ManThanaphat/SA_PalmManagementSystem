@@ -1,0 +1,112 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.scene.control.Button?>
+<?import javafx.scene.control.Label?>
+<?import javafx.scene.control.TableColumn?>
+<?import javafx.scene.control.TableView?>
+<?import javafx.scene.control.TextField?>
+<?import javafx.scene.layout.AnchorPane?>
+<?import javafx.scene.paint.Color?>
+<?import javafx.scene.paint.LinearGradient?>
+<?import javafx.scene.paint.Stop?>
+<?import javafx.scene.shape.Rectangle?>
+<?import javafx.scene.text.Font?>
+
+<AnchorPane prefHeight="600.0" prefWidth="800.0" xmlns="http://javafx.com/javafx/21" xmlns:fx="http://javafx.com/fxml/1" fx:controller="com.example.project02.controllers.AdminEquipController">
+    <children>
+      <Rectangle arcHeight="5.0" arcWidth="5.0" height="600.0" stroke="#37a381" strokeType="INSIDE" width="800.0">
+         <fill>
+            <LinearGradient endX="1.0" endY="1.0">
+               <stops>
+                  <Stop>
+                     <color>
+                        <Color red="0.5098039507865906" green="0.772549033164978" blue="0.5098039507865906" />
+                     </color>
+                  </Stop>
+                  <Stop offset="0.006711409395973154">
+                     <color>
+                        <Color red="0.5098039507865906" green="0.772549033164978" blue="0.5098039507865906" />
+                     </color>
+                  </Stop>
+                  <Stop offset="1.0">
+                     <color>
+                        <Color red="0.29019609093666077" green="0.7176470756530762" blue="0.5921568870544434" />
+                     </color>
+                  </Stop>
+               </stops>
+            </LinearGradient>
+         </fill>
+      </Rectangle>
+      <Rectangle arcHeight="5.0" arcWidth="5.0" fill="#def25d" height="70.0" stroke="#def25d" strokeType="INSIDE" width="800.0" />
+        <Label layoutX="25.0" layoutY="14.0" text="ผู้ดูแล |" textFill="#506405">
+         <font>
+            <Font size="15.0" />
+         </font></Label>
+        <Label fx:id="loginNameLabel" layoutX="92.0" layoutY="14.0" text="loginNameLabel" textFill="#506405">
+         <font>
+            <Font size="15.0" />
+         </font></Label>
+        <Button layoutX="703.0" layoutY="19.0" mnemonicParsing="false" onAction="#handleLogoutButtonAction" text="ลงชื่อออก">
+         <font>
+            <Font size="15.0" />
+         </font></Button>
+      <Label layoutX="25.0" layoutY="35.0" text="หน้าหลัก &gt;&gt;" textFill="#506405">
+         <font>
+            <Font size="15.0" />
+         </font></Label>
+      <Label layoutX="105.0" layoutY="35.0" text="จัดการอุปกรณ์" textFill="#506405">
+         <font>
+            <Font name="System Bold" size="15.0" />
+         </font></Label>
+      <Button layoutX="741.0" layoutY="553.0" mnemonicParsing="false" onAction="#handleBackButtonAction" text="กลับ">
+         <font>
+            <Font size="15.0" />
+         </font></Button>
+      <TableView fx:id="equipmentTable" layoutX="104.0" layoutY="119.0" onMouseClicked="#handleEquipmentDoubleClickAction" prefHeight="351.0" prefWidth="520.0">
+        <columns>
+          <TableColumn fx:id="nameColumn" prefWidth="311.3333511352539" text="ชื่ออุปกรณ์" />
+          <TableColumn fx:id="numberColumn" minWidth="0.0" prefWidth="105.99996948242188" text="จำนวนที่มี" />
+            <TableColumn fx:id="borrowingColumn" minWidth="0.0" prefWidth="101.33331298828125" text="กำลังยืม" />
+        </columns>
+      </TableView>
+      <Label layoutX="104.0" layoutY="89.0" text="คลิกสองครั้งที่แถวเพื่อดูประวัติการยืมของแต่ละอุปกรณ์" textFill="WHITE">
+         <font>
+            <Font size="14.0" />
+         </font></Label>
+      <Label layoutX="104.0" layoutY="495.0" text="เพื่มหรือปรับจำนวนอุปกรณ์ : " textFill="WHITE">
+         <font>
+            <Font name="System Bold" size="17.0" />
+         </font>
+      </Label>
+      <TextField fx:id="nameField" layoutX="216.0" layoutY="527.0" prefHeight="25.0" prefWidth="149.0">
+         <font>
+            <Font size="15.0" />
+         </font>
+      </TextField>
+      <Label layoutX="373.0" layoutY="532.0" text="จำนวนที่มี : " textFill="WHITE">
+         <font>
+            <Font size="15.0" />
+         </font>
+      </Label>
+      <TextField fx:id="numberField" layoutX="441.0" layoutY="527.0" prefHeight="25.0" prefWidth="51.0">
+         <font>
+            <Font size="15.0" />
+         </font>
+      </TextField>
+      <Label layoutX="143.0" layoutY="532.0" text="ชื่ออุปกรณ์ : " textFill="WHITE">
+         <font>
+            <Font size="15.0" />
+         </font>
+      </Label>
+      <Button layoutX="509.0" layoutY="527.0" mnemonicParsing="false" onAction="#handleSetButtonAction" text="ปรับ" textAlignment="JUSTIFY">
+         <font>
+            <Font size="15.0" />
+         </font>
+      </Button>
+      <Label fx:id="errorLabel" layoutX="143.0" layoutY="568.0" text="errorLabel" textFill="WHITE">
+         <font>
+            <Font size="15.0" />
+         </font>
+      </Label>
+    </children>
+</AnchorPane>

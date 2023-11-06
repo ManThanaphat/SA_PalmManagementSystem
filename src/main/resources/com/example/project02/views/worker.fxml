@@ -1,0 +1,95 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.scene.control.Button?>
+<?import javafx.scene.control.Label?>
+<?import javafx.scene.control.TableColumn?>
+<?import javafx.scene.control.TableView?>
+<?import javafx.scene.layout.AnchorPane?>
+<?import javafx.scene.paint.Color?>
+<?import javafx.scene.paint.LinearGradient?>
+<?import javafx.scene.paint.Stop?>
+<?import javafx.scene.shape.Rectangle?>
+<?import javafx.scene.text.Font?>
+
+<AnchorPane prefHeight="600.0" prefWidth="800.0" xmlns="http://javafx.com/javafx/21" xmlns:fx="http://javafx.com/fxml/1" fx:controller="com.example.project02.controllers.WorkerController">
+   <children>
+      <Rectangle arcHeight="5.0" arcWidth="5.0" height="600.0" stroke="#37a381" strokeType="INSIDE" width="800.0">
+         <fill>
+            <LinearGradient endX="1.0" endY="1.0">
+               <stops>
+                  <Stop>
+                     <color>
+                        <Color red="0.5098039507865906" green="0.772549033164978" blue="0.5098039507865906" />
+                     </color>
+                  </Stop>
+                  <Stop offset="0.006711409395973154">
+                     <color>
+                        <Color red="0.5098039507865906" green="0.772549033164978" blue="0.5098039507865906" />
+                     </color>
+                  </Stop>
+                  <Stop offset="1.0">
+                     <color>
+                        <Color red="0.29019609093666077" green="0.7176470756530762" blue="0.5921568870544434" />
+                     </color>
+                  </Stop>
+               </stops>
+            </LinearGradient>
+         </fill>
+      </Rectangle>
+      <Rectangle arcHeight="5.0" arcWidth="5.0" fill="#def25d" height="70.0" stroke="#def25d" strokeType="INSIDE" width="800.0" />
+      <Label layoutX="23.0" layoutY="14.0" text="คนงาน |" textFill="#506405">
+         <font>
+            <Font size="15.0" />
+         </font>
+      </Label>
+      <Label fx:id="loginNameLabel" layoutX="90.0" layoutY="14.0" text="loginNameLabel" textFill="#506405">
+         <font>
+            <Font size="15.0" />
+         </font>
+      </Label>
+      <Button layoutX="701.0" layoutY="19.0" mnemonicParsing="false" onAction="#handleLogoutButtonAction" text="ลงชื่อออก">
+         <font>
+            <Font size="15.0" />
+         </font>
+      </Button>
+      <Label layoutX="23.0" layoutY="40.0" text="หน้าหลัก" textFill="#506405">
+         <font>
+            <Font name="System Bold" size="15.0" />
+         </font>
+      </Label>
+      <Label layoutX="52.0" layoutY="96.0" text="งานที่มอบหมาย" textFill="WHITE">
+         <font>
+            <Font name="System Bold" size="17.0" />
+         </font>
+      </Label>
+      <Label layoutX="52.0" layoutY="122.0" text="คลิกสองครั้งที่แถวเพื่อบันทึกการทำงาน คลิกหนึ่งครั้งเพื่อดูรายละเอียดงาน" textFill="WHITE">
+         <font>
+            <Font size="14.0" />
+         </font>
+      </Label>
+      <TableView fx:id="workTable" layoutX="52.0" layoutY="153.0" onMouseClicked="#handleWorkDoubleClickAction" prefHeight="357.0" prefWidth="526.0">
+         <columns>
+            <TableColumn fx:id="idColumn" prefWidth="46.000003814697266" text="ID" />
+            <TableColumn fx:id="nameColumn" prefWidth="224.0" text="ชื่องาน" />
+            <TableColumn fx:id="startDateColumn" text="เริ่มต้น" />
+            <TableColumn fx:id="endDateColumn" prefWidth="73.33331298828125" text="สิ้นสุด" />
+            <TableColumn fx:id="statusColumn" prefWidth="102.0" text="สถานะ" />
+         </columns>
+      </TableView>
+      <Label layoutX="589.0" layoutY="153.0" text="รายละเอียดของงาน :" textFill="WHITE">
+         <font>
+            <Font size="14.0" />
+         </font>
+      </Label>
+      <Label fx:id="detailsLabel" alignment="TOP_LEFT" layoutX="589.0" layoutY="186.0" prefHeight="323.0" prefWidth="185.0" text="detailsLabel" textFill="WHITE">
+         <font>
+            <Font size="14.0" />
+         </font>
+      </Label>
+      <Button layoutX="49.0" layoutY="535.0" mnemonicParsing="false" onAction="#handleEquipButtonAction" text="อุปกรณ์ที่กำลังยืม">
+         <font>
+            <Font size="15.0" />
+         </font>
+      </Button>
+   </children>
+</AnchorPane>
