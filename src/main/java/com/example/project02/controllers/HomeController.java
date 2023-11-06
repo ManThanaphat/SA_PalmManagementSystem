@@ -12,11 +12,14 @@ import javafx.scene.control.TextField;
 import javafx.scene.paint.Color;
 
 import java.io.*;
+import java.sql.*;
 import java.util.Objects;
 import java.util.ArrayList;
 import java.util.List;
 
+
 public class HomeController {
+    
 
     @FXML
     private TextField usernameTextField;
@@ -26,8 +29,10 @@ public class HomeController {
     private Label checkedLabel;
     private List<Account> accountList = new ArrayList<>();
 
-    public void initialize() {
+    public void initialize() throws SQLException {
         // Hide the label when the program starts
+
+
         checkedLabel.setVisible(false);
 
         loadDataFromAccountsCSV();
@@ -63,16 +68,41 @@ public class HomeController {
     }
 
     public void handleLoginButtonAction() {
+
+        
+
         String inputUsername = usernameTextField.getText();
         String inputPassword = passwordField.getText();
         boolean isCorrect = false;
         Account correctAccount = null;
 
-        for (Account acc : accountList) {
-            if (Objects.equals(inputUsername, acc.getUsername()) && Objects.equals(inputPassword, acc.getPassword())){
-                isCorrect = !isCorrect;
-                correctAccount = acc;
+        String url = "jdbc:postgresql://db.fkeqbhrulivpcrmaxyqs.supabase.co/postgres";
+        String user = "postgres"; // Replace with your DB username
+        String password = "Qpczc#Ph3jMeP.Y"; // Replace with your DB password
+        String sql = "SELECT * FROM login WHERE username = ? AND password = ?";
+
+        try (Connection conn = DriverManager.getConnection(url, user, password);
+             PreparedStatement pst = conn.prepareStatement(sql)) {
+            
+            pst.setString(1, inputUsername);
+            pst.setString(2, inputPassword);
+
+            ResultSet rs = pst.executeQuery();
+
+            if (rs.next()) {
+                isCorrect = true;
+                
+                correctAccount = new Account(
+                        rs.getString("username"),
+                        rs.getString("name"),
+                        rs.getString("password"),
+                        rs.getBoolean("isAdmin")
+                );
             }
+            System.out.println(correctAccount.toString());
+
+        } catch (SQLException e) {
+            e.printStackTrace(); // In production, consider a more robust error handling mechanism
         }
 
         if (isCorrect){
