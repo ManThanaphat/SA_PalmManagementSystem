@@ -22,6 +22,9 @@ import java.net.URL;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
+import java.sql.*;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
@@ -46,12 +49,15 @@ public class WorkerEquipController {
     private List<Equipment> equipmentList = new ArrayList<>();
     private List<BorrowForm> borrowFormList = new ArrayList<>();
     private List<BorrowForm> allBorrowFormList = new ArrayList<>();
+    String url = "jdbc:postgresql://db.wxxhmqjeruggsslfbkhs.supabase.co/postgres";
+    String user = "postgres"; // Replace with your DB username
+    String password = "8hlUWjTUakLNou2C"; // Replace with your DB password
 
     public void initialize() {
         loadDataFromLoggingInCSV();
-        loadDataFromEquipmentCSV();
-        loadDataFromBorrowFormCSV();
-        loadDataFromBorrowFormCSVBorrowedOnly();
+        loadDataFromEquipmentDatabase();
+        loadDataFromBorrowFormDatabase();
+        loadDataFromBorrowFormDatabaseBorrowedOnly();
         checkedLabel.setText("");
         loginNameLabel.setText(loginAccount.getName());
         ObservableList<BorrowForm> observableEquipments = FXCollections.observableArrayList(borrowFormList);
@@ -68,99 +74,127 @@ public class WorkerEquipController {
 
     }
 
-    public void loadDataFromEquipmentCSV() {
-        try (BufferedReader reader = new BufferedReader(new FileReader("csv/equipment.csv"))) {
-            String line;
-            while ((line = reader.readLine()) != null) {
-                String[] parts = line.split(",");
-                if (parts.length == 3) { // Assuming there are 6 fields in the CSV
-                    String name = parts[0];
-                    int number = Integer.parseInt(parts[1]);
-                    int borrowing = Integer.parseInt(parts[2]);
+    public void loadDataFromEquipmentDatabase() {
+        try (Connection connection = DriverManager.getConnection(url, user, password)) {
+            String query = "SELECT equipment_name, equipment_number, equipment_borrowing FROM public.equipments";
+            try (PreparedStatement statement = connection.prepareStatement(query);
+                 ResultSet resultSet = statement.executeQuery()) {
+
+                while (resultSet.next()) {
+                    String name = resultSet.getString("equipment_name");
+                    int number = resultSet.getInt("equipment_number");
+                    int borrowing = resultSet.getInt("equipment_borrowing");
+
                     Equipment equipment = new Equipment(name, number, borrowing);
                     equipmentList.add(equipment);
                 }
             }
-        } catch (IOException e) {
+        } catch (SQLException e) {
             e.printStackTrace();
         }
     }
 
-    public void saveDataToBorrowFormCSV(List<BorrowForm> borrowFormList) {
-        try (BufferedWriter writer = new BufferedWriter(new FileWriter("csv/borrow_form.csv"))) {
-            for (BorrowForm borrowForm : borrowFormList) {
-                writer.write(borrowForm.getId() + "," +
-                        borrowForm.getBorrower() + "," +
-                        borrowForm.getEquipmentName() + "," +
-                        borrowForm.getBorrowDate() + "," +
-                        borrowForm.getBorrowNumber() + "," +
-                        borrowForm.getReturnedNumber() + "," +
-                        borrowForm.getStatus());
-                writer.newLine();
+    public void updateBorrowFormData(BorrowForm borrowForm) {
+        try (Connection connection = DriverManager.getConnection(url, user, password)) {
+            String query = "UPDATE borrow_forms SET borrower = ?, borrow_equipment = ?, borrow_date = ?, borrow_number = ?, returned_number = ?, bf_status = ? WHERE bf_id = ?";
+
+            try (PreparedStatement statement = connection.prepareStatement(query)) {
+                statement.setString(1, borrowForm.getBorrower());
+                statement.setString(2, borrowForm.getEquipmentName());
+
+                // Assuming borrowDate is a LocalDateTime, convert it to Timestamp
+                DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
+                LocalDateTime borrowDate = LocalDateTime.parse(borrowForm.getBorrowDate(), formatter);
+
+                // Convert LocalDateTime to Timestamp
+                Timestamp timestamp = Timestamp.valueOf(borrowDate);
+
+                statement.setTimestamp(3, timestamp);
+                statement.setInt(4, borrowForm.getBorrowNumber());
+                statement.setInt(5, borrowForm.getReturnedNumber());
+                statement.setString(6, borrowForm.getStatus());
+                statement.setString(7, borrowForm.getId());
+
+                statement.executeUpdate();
             }
-        } catch (IOException e) {
+        } catch (SQLException e) {
             e.printStackTrace();
         }
     }
 
-    public void saveDataToEquipmentsCSV(List<Equipment> equipmentList) {
-        try (BufferedWriter writer = new BufferedWriter(new FileWriter("csv/equipment.csv"))) {
-            for (Equipment equipment : equipmentList) {
-                writer.write(equipment.getName() + "," +
-                        equipment.getNumber() + "," +
-                        equipment.getBorrowing());
-                writer.newLine();
+    public void updateEquipmentData(Equipment equipment) {
+        try (Connection connection = DriverManager.getConnection(url, user, password)) {
+            String query = "UPDATE equipments SET equipment_number = ?, equipment_borrowing = ? WHERE equipment_name = ?";
+
+            try (PreparedStatement statement = connection.prepareStatement(query)) {
+                statement.setInt(1, equipment.getNumber());
+                statement.setInt(2, equipment.getBorrowing());
+                statement.setString(3, equipment.getName());
+
+                statement.executeUpdate();
             }
-        } catch (IOException e) {
+        } catch (SQLException e) {
             e.printStackTrace();
         }
     }
 
-    public void loadDataFromBorrowFormCSVBorrowedOnly() {
-        try (BufferedReader reader = new BufferedReader(new FileReader("csv/borrow_form.csv"))) {
-            String line;
-            while ((line = reader.readLine()) != null) {
-                String[] parts = line.split(",");
-                if (parts.length == 7) { // Assuming there are 6 fields in the CSV
-                    String id = parts[0];
-                    String borrower = parts[1];
-                    String equipmentName = parts[2];
-                    String borrowDate = parts[3]; // Assuming it's a String, not an int
-                    int borrowNumber = Integer.parseInt(parts[4]);
-                    int returnedNumber = Integer.parseInt(parts[5]);
-                    String status = parts[6];
-                    if (Objects.equals(borrower, loginAccount.getUsername()) && borrowNumber - returnedNumber > 0) {
-                        BorrowForm borrowForm = new BorrowForm(id, borrower, equipmentName, borrowDate, borrowNumber, returnedNumber, status);
-                        borrowFormList.add(borrowForm);
-                    }
+
+
+    public void loadDataFromBorrowFormDatabaseBorrowedOnly() {
+        try (Connection connection = DriverManager.getConnection(url, user, password)) {
+            String query = "SELECT bf_id, borrower, borrow_equipment, borrow_date, borrow_number, returned_number, bf_status " +
+                    "FROM public.borrow_forms " +
+                    "WHERE borrower = ? AND (borrow_number - returned_number) > 0";
+
+            try (PreparedStatement statement = connection.prepareStatement(query)) {
+                statement.setString(1, loginAccount.getUsername());
+                ResultSet resultSet = statement.executeQuery();
+
+                while (resultSet.next()) {
+                    String id = resultSet.getString("bf_id");
+                    String borrower = resultSet.getString("borrower");
+                    String equipmentName = resultSet.getString("borrow_equipment");
+                    String borrowDate = resultSet.getString("borrow_date"); // Change type if different in the database
+                    int borrowNumber = resultSet.getInt("borrow_number");
+                    int returnedNumber = resultSet.getInt("returned_number");
+                    String status = resultSet.getString("bf_status");
+
+                    BorrowForm borrowForm = new BorrowForm(id, borrower, equipmentName, borrowDate, borrowNumber, returnedNumber, status);
+                    borrowFormList.add(borrowForm);
                 }
             }
-        } catch (IOException e) {
+        } catch (SQLException e) {
             e.printStackTrace();
         }
     }
 
-    public void loadDataFromBorrowFormCSV() {
-        try (BufferedReader reader = new BufferedReader(new FileReader("csv/borrow_form.csv"))) {
-            String line;
-            while ((line = reader.readLine()) != null) {
-                String[] parts = line.split(",");
-                if (parts.length == 7) { // Assuming there are 6 fields in the CSV
-                    String id = parts[0];
-                    String borrower = parts[1];
-                    String equipmentName = parts[2];
-                    String borrowDate = parts[3]; // Assuming it's a String, not an int
-                    int borrowNumber = Integer.parseInt(parts[4]);
-                    int returnedNumber = Integer.parseInt(parts[5]);
-                    String status = parts[6];
+
+    public void loadDataFromBorrowFormDatabase() {
+        try (Connection connection = DriverManager.getConnection(url, user, password)) {
+            String query = "SELECT bf_id, borrower, borrow_equipment, borrow_date, borrow_number, returned_number, bf_status " +
+                    "FROM public.borrow_forms";
+
+            try (PreparedStatement statement = connection.prepareStatement(query)) {
+                ResultSet resultSet = statement.executeQuery();
+
+                while (resultSet.next()) {
+                    String id = resultSet.getString("bf_id");
+                    String borrower = resultSet.getString("borrower");
+                    String equipmentName = resultSet.getString("borrow_equipment");
+                    String borrowDate = resultSet.getString("borrow_date"); // Change type if different in the database
+                    int borrowNumber = resultSet.getInt("borrow_number");
+                    int returnedNumber = resultSet.getInt("returned_number");
+                    String status = resultSet.getString("bf_status");
+
                     BorrowForm borrowForm = new BorrowForm(id, borrower, equipmentName, borrowDate, borrowNumber, returnedNumber, status);
                     allBorrowFormList.add(borrowForm);
                 }
             }
-        } catch (IOException e) {
+        } catch (SQLException e) {
             e.printStackTrace();
         }
     }
+
 
     public void loadDataFromLoggingInCSV() {
         try (BufferedReader reader = new BufferedReader(new FileReader("csv/logging_in.csv"))) {
@@ -203,6 +237,8 @@ public class WorkerEquipController {
             number = Integer.parseInt(numberInput);
         } catch (NumberFormatException e) {
             numberField.clear();
+            checkedLabel.setText("จำนวนต้องอยู่ระหว่าง 1 ถึงจำนวนที่ยืมทั้งหมดของอุปกรณ์นี้");
+            checkedLabel.setTextFill(Color.RED);
             return;
         }
         for (Equipment equipment : equipmentList) {
@@ -235,11 +271,11 @@ public class WorkerEquipController {
                     borrowFormList.remove(selectedBorrowForm);
                     equipmentChoiceBox.getItems().remove(selectedEquipmentStr);
                 }
-                saveDataToBorrowFormCSV(allBorrowFormList);
-                saveDataToEquipmentsCSV(equipmentList);
+                updateBorrowFormData(selectedBorrowForm);
+                updateEquipmentData(selectedEquipment);
                 borrowFormList.clear();
                 equipmentTable.refresh();
-                loadDataFromBorrowFormCSVBorrowedOnly();
+                loadDataFromBorrowFormDatabaseBorrowedOnly();
                 ObservableList<BorrowForm> observableEquipments = FXCollections.observableArrayList(borrowFormList);
                 equipmentTable.setItems(observableEquipments);
                 numberField.clear();

@@ -13,6 +13,7 @@ import javafx.scene.control.TextField;
 import javafx.scene.paint.Color;
 
 import java.io.*;
+import java.sql.*;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
@@ -33,11 +34,13 @@ public class AdminWorkerSignUpController {
     private Label loginNameLabel;
     private Account loginAccount;
     private List<Account> accountList = new ArrayList<>();
+    String url = "jdbc:postgresql://db.wxxhmqjeruggsslfbkhs.supabase.co/postgres";
+    String user = "postgres"; // Replace with your DB username
+    String password = "8hlUWjTUakLNou2C"; // Replace with your DB password
 
     public void initialize() {
         loadDataFromLoggingInCSV();
         loginNameLabel.setText(loginAccount.getName());
-        loadDataFromAccountsCSV();
         checkedLabel.setText("");
     }
 
@@ -59,58 +62,64 @@ public class AdminWorkerSignUpController {
         }
     }
 
-    public void loadDataFromAccountsCSV() {
-        try (BufferedReader reader = new BufferedReader(new FileReader("csv/accounts.csv"))) {
-            String line;
-            while ((line = reader.readLine()) != null) {
-                String[] parts = line.split(",");
-                if (parts.length == 4) { // Assuming there are 4 fields in the CSV
-                    String username = parts[0];
-                    String name = parts[1];
-                    String password = parts[2];
-                    boolean isAdmin = Boolean.parseBoolean(parts[3]);
-                    Account account = new Account(username,name,password,isAdmin);
-                    accountList.add(account);
-                }
-            }
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-    }
-
-    public void saveDataToAccountCSV(List<Account> accountList) {
-        try (BufferedWriter writer = new BufferedWriter(new FileWriter("csv/accounts.csv"))) {
-            for (Account account : accountList) {
-                writer.write(account.getUsername() + "," +
-                        account.getName() + "," +
-                        account.getPassword() + "," +
-                        account.isAdmin());
-                writer.newLine();
-            }
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-    }
-
     public void handleConfirmButtonAction() {
-        String username = usernameField.getText();
-        String name = nameField.getText();
-        String password = passwordField.getText();
-        String confirmPassword = confirmPasswordField.getText();
-        if (!Objects.equals(username, "") && !Objects.equals(name, "") && !Objects.equals(password, "") && !Objects.equals(confirmPassword, "")) {
-            boolean equal = false;
-            for (Account account : accountList) {
-                if (Objects.equals(username, account.getUsername())) {
-                    equal = true;
-                    break;
-                }
-            }
-            if (!equal) {
-                if (password.length() >= 8) {
-                    if (password.equals(confirmPassword)) {
-                        Account newAccount = new Account(username, name, password, false);
-                        accountList.add(newAccount);
-                        saveDataToAccountCSV(accountList);
+        String inputUsername = usernameField.getText();
+        String inputName = nameField.getText();
+        String inputPassword = passwordField.getText();
+        String inputConfirmPassword = confirmPasswordField.getText();
+
+        if (!Objects.equals(inputUsername, "") && !Objects.equals(inputName, "") && !Objects.equals(inputPassword, "") && !Objects.equals(inputConfirmPassword, "")) {
+
+            boolean isEqual = false;
+
+                    String sqlCheckEqual = "SELECT * FROM accounts WHERE username = ?";
+
+                    try (Connection conn = DriverManager.getConnection(url, user, password);
+                         PreparedStatement pst = conn.prepareStatement(sqlCheckEqual)) {
+
+                        pst.setString(1, inputUsername);
+
+                        ResultSet rs = pst.executeQuery();
+
+                        if (rs.next()) {
+                            isEqual = true;
+                        }
+
+                    } catch (SQLException e) {
+                        e.printStackTrace(); // In production, consider a more robust error handling mechanism
+                    }
+
+                    if (!isEqual) {
+                        if (inputPassword.length() >= 8) {
+                            if (inputPassword.equals(inputConfirmPassword)) {
+                        Account newAccount = new Account(inputUsername, inputName, inputPassword, false);
+                        // accountList.add(newAccount);
+                        // saveDataToAccountCSV(accountList);
+
+                        // insert account into database
+                        String sqlInsert = "INSERT INTO accounts (username, name, password, is_admin) VALUES (?, ?, ?, ?)";
+
+                        try (Connection conn = DriverManager.getConnection(url, user, password);
+                             PreparedStatement pst = conn.prepareStatement(sqlInsert)) {
+
+                            pst.setString(1, newAccount.getUsername());  // Set username
+                            pst.setString(2, newAccount.getName());      // Set name
+                            pst.setString(3, newAccount.getPassword());  // Set password
+                            pst.setBoolean(4, newAccount.isAdmin());
+
+                            int rowsAffected = pst.executeUpdate(); // Execute the INSERT statement
+
+                            if (rowsAffected > 0) {
+                                // Insertion successful
+                                System.out.println("New account inserted successfully.");
+                            } else {
+                                // Insertion failed
+                                System.out.println("Failed to insert the new account.");
+                            }
+                        } catch (SQLException e) {
+                            e.printStackTrace(); // Handle any potential database errors here
+                        }
+
                         checkedLabel.setText("ลงทะเบียนคนงานสำเร็จ");
                         checkedLabel.setTextFill(Color.GREEN);
                         usernameField.clear();

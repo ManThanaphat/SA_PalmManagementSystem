@@ -16,6 +16,7 @@ import javafx.scene.control.cell.PropertyValueFactory;
 import java.io.BufferedReader;
 import java.io.FileReader;
 import java.io.IOException;
+import java.sql.*;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
@@ -42,12 +43,16 @@ public class AdminEquipDetailsController {
     private Equipment selectedEquipment;
     private List<BorrowForm> borrowFormList = new ArrayList<>();
     private List<Account> accountList = new ArrayList<>();
+    String url = "jdbc:postgresql://db.wxxhmqjeruggsslfbkhs.supabase.co/postgres";
+    String user = "postgres"; // Replace with your DB username
+    String password = "8hlUWjTUakLNou2C"; // Replace with your DB password
 
     public void initialize() {
         loadDataFromLoggingInCSV();
         loadDataFromSelectedEquipmentCSV();
-        loadDataFromBorrowFormCSV();
-        loadDataFromAccountsCSV();
+
+        loadDataFromBorrowFormDatabase();
+        loadDataFromAccountsDatabase();
         loginNameLabel.setText(loginAccount.getName());
         equipmentLabel.setText(selectedEquipment.getName());
         ObservableList<BorrowForm> observableBorrowForms = FXCollections.observableArrayList(borrowFormList);
@@ -56,10 +61,10 @@ public class AdminEquipDetailsController {
         // Update the borrowerColumn to display the name of the borrower
         borrowerColumn.setCellValueFactory(data -> {
             String borrowerUsername = data.getValue().getBorrower();
-            // Assuming you have a method to find the name associated with the username
             String borrowerName = findNameForUsername(borrowerUsername);
             return new SimpleStringProperty(borrowerName);
         });
+
         borrowNumberColumn.setCellValueFactory(new PropertyValueFactory<>("borrowNumber"));
         returnedNumberColumn.setCellValueFactory(new PropertyValueFactory<>("returnedNumber"));
         statusColumn.setCellValueFactory(new PropertyValueFactory<>("status"));
@@ -76,24 +81,27 @@ public class AdminEquipDetailsController {
     }
 
 
-    public void loadDataFromAccountsCSV() {
-        try (BufferedReader reader = new BufferedReader(new FileReader("csv/accounts.csv"))) {
-            String line;
-            while ((line = reader.readLine()) != null) {
-                String[] parts = line.split(",");
-                if (parts.length == 4) { // Assuming there are 4 fields in the CSV
-                    String username = parts[0];
-                    String name = parts[1];
-                    String password = parts[2];
-                    boolean isAdmin = Boolean.parseBoolean(parts[3]);
-                    Account account = new Account(username, name, password, isAdmin);
-                    accountList.add(account);
-                }
+    public void loadDataFromAccountsDatabase() {
+        String sqlQuery = "SELECT * FROM accounts";
+
+        try (Connection conn = DriverManager.getConnection(url, user, password);
+             PreparedStatement pst = conn.prepareStatement(sqlQuery);
+             ResultSet rs = pst.executeQuery()) {
+
+            while (rs.next()) {
+                String username = rs.getString("username");
+                String name = rs.getString("name");
+                String password = rs.getString("password");
+                boolean isAdmin = rs.getBoolean("is_admin");
+                Account account = new Account(username, name, password, isAdmin);
+                accountList.add(account);
             }
-        } catch (IOException e) {
-            e.printStackTrace();
+
+        } catch (SQLException e) {
+            e.printStackTrace(); // Handle or log the exception as needed
         }
     }
+
 
     public void loadDataFromLoggingInCSV() {
         try (BufferedReader reader = new BufferedReader(new FileReader("csv/logging_in.csv"))) {
@@ -130,28 +138,31 @@ public class AdminEquipDetailsController {
         }
     }
 
-    public void loadDataFromBorrowFormCSV() {
-        try (BufferedReader reader = new BufferedReader(new FileReader("csv/borrow_form.csv"))) {
-            String line;
-            while ((line = reader.readLine()) != null) {
-                String[] parts = line.split(",");
-                if (parts.length == 7) { // Assuming there are 6 fields in the CSV
-                    String id = parts[0];
-                    String borrower = parts[1];
-                    String equipmentName = parts[2];
-                    String borrowDate = parts[3]; // Assuming it's a String, not an int
-                    int borrowNumber = Integer.parseInt(parts[4]);
-                    int returnedNumber = Integer.parseInt(parts[5]);
-                    String status = parts[6];
-                    if (Objects.equals(equipmentName, selectedEquipment.getName())) {
-                        BorrowForm borrowForm = new BorrowForm(id, borrower, equipmentName, borrowDate, borrowNumber, returnedNumber, status);
-                        borrowFormList.add(borrowForm);
-                    }
+    public void loadDataFromBorrowFormDatabase() {
+        String sqlQuery = "SELECT * FROM borrow_forms WHERE borrow_equipment = ?";
 
+        try (Connection conn = DriverManager.getConnection(url, user, password);
+             PreparedStatement pst = conn.prepareStatement(sqlQuery)) {
+
+            pst.setString(1, selectedEquipment.getName()); // Set the equipment name parameter
+
+            try (ResultSet rs = pst.executeQuery()) {
+                while (rs.next()) {
+                    String id = rs.getString("bf_id");
+                    String borrower = rs.getString("borrower");
+                    String equipmentName = rs.getString("borrow_equipment");
+                    String borrowDate = rs.getString("borrow_date"); // Assuming it's a String, not an int
+                    int borrowNumber = rs.getInt("borrow_number");
+                    int returnedNumber = rs.getInt("returned_number");
+                    String status = rs.getString("bf_status");
+
+                    BorrowForm borrowForm = new BorrowForm(id, borrower, equipmentName, borrowDate, borrowNumber, returnedNumber, status);
+                    borrowFormList.add(borrowForm);
                 }
             }
-        } catch (IOException e) {
-            e.printStackTrace();
+
+        } catch (SQLException e) {
+            e.printStackTrace(); // Handle or log the exception as needed
         }
     }
 

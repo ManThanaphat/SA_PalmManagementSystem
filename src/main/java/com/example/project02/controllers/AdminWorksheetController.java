@@ -16,6 +16,7 @@ import javafx.scene.image.ImageView;
 
 import java.io.*;
 import java.net.URL;
+import java.sql.*;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
@@ -39,11 +40,15 @@ public class AdminWorksheetController {
     private Account selectedWorker;
     private Worksheet selectedWorksheet;
 
+    String url = "jdbc:postgresql://db.wxxhmqjeruggsslfbkhs.supabase.co/postgres";
+    String user = "postgres"; // Replace with your DB username
+    String password = "8hlUWjTUakLNou2C"; // Replace with your DB password
+
     public void initialize() {
         loadDataFromLoggingInCSV();
         loadDataFromSelectedWorkCSV();
-        loadDataFromWorksheetsCSV();
         loadDataFromSelectedWorkerCSV();
+        loadDataFromWorksheetsDatabase();
         for (Worksheet worksheet : worksheetList) {
             if (Objects.equals(worksheet.getUsername(), selectedWorker.getUsername()) && Objects.equals(work.getId(), worksheet.getWorkID())) {
                 selectedWorksheet = worksheet;
@@ -63,26 +68,28 @@ public class AdminWorksheetController {
             imageView.setImage(image);
         }
     }
-    public void loadDataFromWorksheetsCSV() {
-        try (BufferedReader reader = new BufferedReader(new FileReader("csv/worksheets.csv"))) {
-            String line;
-            while ((line = reader.readLine()) != null) {
-                String[] parts = line.split(",");
-                if (parts.length == 6) { // Assuming there are 4 fields in the CSV
-                    String worksheetID = parts[0];
-                    String workID = parts[1];
-                    String username = parts[2];
-                    String details = parts[3];
-                    String photo = parts[4];
-                    String status = parts[5];
-                    Worksheet worksheet = new Worksheet(worksheetID,workID,username,details,photo,status);
-                    worksheetList.add(worksheet);
-                }
+
+    public void loadDataFromWorksheetsDatabase() {
+        try (Connection connection = DriverManager.getConnection(url, user, password);
+             Statement statement = connection.createStatement();
+             ResultSet resultSet = statement.executeQuery("SELECT * FROM worksheets WHERE work_id = '" + work.getId() + "' AND worker_username = '" + selectedWorker.getUsername() + "'")) {
+
+            while (resultSet.next()) {
+                String worksheetID = resultSet.getString("worksheet_id");
+                String workID = resultSet.getString("work_id");
+                String username = resultSet.getString("worker_username");
+                String details = resultSet.getString("worksheet_description");
+                String photo = resultSet.getString("worksheet_photo");
+                String status = resultSet.getString("worksheet_status");
+
+                Worksheet worksheet = new Worksheet(worksheetID, workID, username, details, photo, status);
+                worksheetList.add(worksheet);
             }
-        } catch (IOException e) {
+        } catch (SQLException e) {
             e.printStackTrace();
         }
     }
+
 
     public void loadDataFromSelectedWorkerCSV() {
         try (BufferedReader reader = new BufferedReader(new FileReader("csv/selected_worker.csv"))) {
@@ -142,21 +149,26 @@ public class AdminWorksheetController {
         }
     }
 
-    public void saveDataToWorksheetsCSV(List<Worksheet> worksheetList) {
-        try (BufferedWriter writer = new BufferedWriter(new FileWriter("csv/worksheets.csv"))) {
+    public void saveDataToWorksheetsDatabase(List<Worksheet> worksheetList) {
+        try (Connection connection = DriverManager.getConnection(url, user, password);
+             PreparedStatement preparedStatement = connection.prepareStatement(
+                     "UPDATE worksheets SET worksheet_status = ? WHERE worksheet_id = ? AND work_id = ? AND worker_username = ?")) {
+
             for (Worksheet worksheet : worksheetList) {
-                writer.write(worksheet.getWorksheetID() + "," +
-                        worksheet.getWorkID() + "," +
-                        worksheet.getUsername() + "," +
-                        worksheet.getDetails() + "," +
-                        worksheet.getPhoto() + "," +
-                        worksheet.getStatus());
-                writer.newLine();
+                preparedStatement.setString(1, worksheet.getStatus());
+                preparedStatement.setString(2, worksheet.getWorksheetID());
+                preparedStatement.setString(3, worksheet.getWorkID());
+                preparedStatement.setString(4, worksheet.getUsername());
+
+                preparedStatement.addBatch();
             }
-        } catch (IOException e) {
+
+            preparedStatement.executeBatch();
+        } catch (SQLException e) {
             e.printStackTrace();
         }
     }
+
 
     public void handleLogoutButtonAction() {
         PageNavigator.navigateToPage("/com/example/project02/views/home.fxml");
@@ -177,7 +189,7 @@ public class AdminWorksheetController {
                 }
             }
             statusLabel.setText(newStatus);
-            saveDataToWorksheetsCSV(worksheetList);
+            saveDataToWorksheetsDatabase(worksheetList);
         }
     }
 

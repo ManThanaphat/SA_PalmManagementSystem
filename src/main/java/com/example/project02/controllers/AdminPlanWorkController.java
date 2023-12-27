@@ -7,14 +7,13 @@ import com.example.project02.services.PageNavigator;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.fxml.FXML;
-import javafx.scene.control.ChoiceBox;
-import javafx.scene.control.Label;
-import javafx.scene.control.TableColumn;
-import javafx.scene.control.TableView;
+import javafx.scene.control.*;
 import javafx.scene.control.cell.PropertyValueFactory;
 import javafx.scene.input.MouseEvent;
 
 import java.io.*;
+import java.sql.*;
+import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
@@ -24,6 +23,8 @@ public class AdminPlanWorkController {
     private Label loginNameLabel;
     @FXML
     private Label planLabel;
+    @FXML
+    private Button assignButton;
     @FXML
     private ChoiceBox<String> statusChoiceBox;
     @FXML
@@ -42,14 +43,17 @@ public class AdminPlanWorkController {
     private Plan plan;
     private List<Work> workList = new ArrayList<>();
     private List<Work> allWorkList = new ArrayList<>();
+    String url = "jdbc:postgresql://db.wxxhmqjeruggsslfbkhs.supabase.co/postgres";
+    String user = "postgres"; // Replace with your DB username
+    String password = "8hlUWjTUakLNou2C"; // Replace with your DB password
 
     public void initialize() {
         loadDataFromLoggingInCSV();
         loginNameLabel.setText(loginAccount.getName());
         loadDataFromSelectedPlanCSV();
         planLabel.setText("PlanID " + plan.getId() + " : " + plan.getName());
-        loadDataFromWorksCSV();
-        loadDataFromWorksCSVAll();
+        loadDataFromWorksDatabase();
+        loadDataFromWorksDatabaseAll();
         ObservableList<Work> observableWorks = FXCollections.observableArrayList(workList);
         workTable.setItems(observableWorks);
         idColumn.setCellValueFactory(new PropertyValueFactory<>("id"));
@@ -58,6 +62,17 @@ public class AdminPlanWorkController {
         endDateColumn.setCellValueFactory(new PropertyValueFactory<>("endDate"));
         statusColumn.setCellValueFactory(new PropertyValueFactory<>("status"));
         statusChoiceBox.getItems().addAll("ยังไม่เริ่มต้น", "กำลังทำ", "เสร็จสิ้น");
+
+        // Get today's date
+        LocalDate today = LocalDate.now();
+        LocalDate planEndDate = LocalDate.parse(plan.getEndDate()); // Assuming endDate is in YYYY-MM-DD format
+
+        // Compare today's date with the plan's end date
+        if (planEndDate.isBefore(today)) {
+            // If the plan's end date is before today, hide the assign button
+            assignButton.setVisible(false); // Replace 'assignButton' with your actual button name
+        }
+
     }
 
     public void loadDataFromLoggingInCSV() {
@@ -99,69 +114,55 @@ public class AdminPlanWorkController {
         }
     }
 
-    public void loadDataFromWorksCSV() {
-        try (BufferedReader reader = new BufferedReader(new FileReader("csv/works.csv"))) {
-            String line;
-            while ((line = reader.readLine()) != null) {
-                String[] parts = line.split(",");
-                if (parts.length == 7) { // Assuming there are 6 fields in the CSV
-                    String id = parts[0];
-                    String name = parts[1];
-                    String startDate = parts[2];
-                    String endDate = parts[3];
-                    String planID = parts[4];
-                    String details = parts[5];
-                    String status = parts[6];
+    public void loadDataFromWorksDatabase() {
+        String sqlSelect = "SELECT * FROM works WHERE plan_id = ?";
 
+        try (Connection conn = DriverManager.getConnection(url, user, password);
+             PreparedStatement pst = conn.prepareStatement(sqlSelect)) {
 
-                    if (Objects.equals(planID, plan.getId())) {
-                        Work work = new Work(id,name,startDate,endDate,planID,details,status);
-                        workList.add(work);
-                    }
+            pst.setString(1, plan.getId());
+
+            try (ResultSet rs = pst.executeQuery()) {
+                while (rs.next()) {
+                    String id = rs.getString("work_id");
+                    String name = rs.getString("work_name");
+                    String startDate = rs.getString("work_start_date");
+                    String endDate = rs.getString("work_end_date");
+                    String planID = rs.getString("plan_id");
+                    String details = rs.getString("work_description");
+                    String status = rs.getString("work_status");
+
+                    Work work = new Work(id, name, startDate, endDate, planID, details, status);
+                    workList.add(work);
                 }
             }
-        } catch (IOException e) {
-            e.printStackTrace();
+        } catch (SQLException e) {
+            e.printStackTrace(); // Handle or log the exception as needed
         }
     }
 
-    public void loadDataFromWorksCSVAll() {
-        try (BufferedReader reader = new BufferedReader(new FileReader("csv/works.csv"))) {
-            String line;
-            while ((line = reader.readLine()) != null) {
-                String[] parts = line.split(",");
-                if (parts.length == 7) { // Assuming there are 6 fields in the CSV
-                    String id = parts[0];
-                    String name = parts[1];
-                    String startDate = parts[2];
-                    String endDate = parts[3];
-                    String planID = parts[4];
-                    String details = parts[5];
-                    String status = parts[6];
 
-                    Work work = new Work(id,name,startDate,endDate,planID,details,status);
-                    allWorkList.add(work);
-                }
-            }
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-    }
+    public void loadDataFromWorksDatabaseAll() {
+        String sqlSelect = "SELECT * FROM works";
 
-    public void saveDataToWorksCSV(List<Work> workList) {
-        try (BufferedWriter writer = new BufferedWriter(new FileWriter("csv/works.csv"))) {
-            for (Work work : workList) {
-                writer.write(work.getId() + "," +
-                        work.getName() + "," +
-                        work.getStartDate() + "," +
-                        work.getEndDate() + "," +
-                        work.getPlanID() + "," +
-                        work.getDetails() + "," +
-                        work.getStatus());
-                writer.newLine();
+        try (Connection conn = DriverManager.getConnection(url, user, password);
+             PreparedStatement pst = conn.prepareStatement(sqlSelect);
+             ResultSet rs = pst.executeQuery()) {
+
+            while (rs.next()) {
+                String id = rs.getString("work_id");
+                String name = rs.getString("work_name");
+                String startDate = rs.getString("work_start_date");
+                String endDate = rs.getString("work_end_date");
+                String planID = rs.getString("plan_id");
+                String details = rs.getString("work_description");
+                String status = rs.getString("work_status");
+
+                Work work = new Work(id, name, startDate, endDate, planID, details, status);
+                allWorkList.add(work);
             }
-        } catch (IOException e) {
-            e.printStackTrace();
+        } catch (SQLException e) {
+            e.printStackTrace(); // Handle or log the exception as needed
         }
     }
 
@@ -181,15 +182,32 @@ public class AdminPlanWorkController {
     }
 
     public void handleChangeStatusButtonAction() {
-        // Get the selected plan and new status from the ChoiceBox
-        Work selectedWork = workTable.getSelectionModel().getSelectedItem(); // Assuming planTable is your TableView
+        // Get the selected work and new status from the ChoiceBox
+        Work selectedWork = workTable.getSelectionModel().getSelectedItem();
         String newStatus = statusChoiceBox.getValue();
 
         if (selectedWork != null && newStatus != null) {
-            // Change the status of the selected plan
+            // Change the status of the selected work
             selectedWork.setStatus(newStatus);
+            updateWorkStatusInDatabase(selectedWork);
+
+            // Refresh the workTable
             workTable.refresh();
-            saveDataToWorksCSV(allWorkList);
+        }
+    }
+
+    private void updateWorkStatusInDatabase(Work work) {
+        String sqlUpdate = "UPDATE works SET work_status = ? WHERE work_id = ?";
+
+        try (Connection conn = DriverManager.getConnection(url, user, password);
+             PreparedStatement pst = conn.prepareStatement(sqlUpdate)) {
+
+            pst.setString(1, work.getStatus());
+            pst.setString(2, work.getId());
+
+            pst.executeUpdate();
+        } catch (SQLException e) {
+            e.printStackTrace(); // Handle or log the exception as needed
         }
     }
 

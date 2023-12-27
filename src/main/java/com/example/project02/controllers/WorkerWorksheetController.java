@@ -22,6 +22,7 @@ import java.net.URL;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
+import java.sql.*;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
@@ -47,6 +48,9 @@ public class WorkerWorksheetController {
     private List<Worksheet> worksheetList = new ArrayList<>();
     private List<Worksheet> allWorksheetList = new ArrayList<>();
     private java.io.File selectedFile;
+    String url = "jdbc:postgresql://db.wxxhmqjeruggsslfbkhs.supabase.co/postgres";
+    String user = "postgres"; // Replace with your DB username
+    String password = "8hlUWjTUakLNou2C"; // Replace with your DB password
 
     public void initialize() {
         checkedLabel.setText("");
@@ -54,8 +58,8 @@ public class WorkerWorksheetController {
         workLabel.setText("ID " + work.getId() + " : " + work.getName());
         loadDataFromLoggingInCSV();
         loginNameLabel.setText(loginAccount.getName());
-        loadDataFromWorksheetsCSV();
-        loadDataFromWorksheetsCSVAll();
+        loadDataFromWorksheetsDatabase();
+        loadDataFromWorksheetsDatabaseAll();
         for (Worksheet worksheet : worksheetList) {
             if (Objects.equals(worksheet.getWorkID(), work.getId()) && Objects.equals(worksheet.getUsername(), loginAccount.getUsername())) {
                 selectedWorksheet = worksheet;
@@ -76,42 +80,48 @@ public class WorkerWorksheetController {
         }
     }
 
-    public void loadDataFromWorksheetsCSVAll() {
-        try (BufferedReader reader = new BufferedReader(new FileReader("csv/worksheets.csv"))) {
-            String line;
-            while ((line = reader.readLine()) != null) {
-                String[] parts = line.split(",");
-                if (parts.length == 6) { // Assuming there are 4 fields in the CSV
-                    String worksheetID = parts[0];
-                    String workID = parts[1];
-                    String username = parts[2];
-                    String details = parts[3];
-                    String photo = parts[4];
-                    String status = parts[5];
-                    Worksheet worksheet = new Worksheet(worksheetID,workID,username,details,photo,status);
-                    allWorksheetList.add(worksheet);
-                }
+    public void loadDataFromWorksheetsDatabaseAll() {
+        try (Connection connection = DriverManager.getConnection(url, user, password);
+             Statement statement = connection.createStatement();
+             ResultSet resultSet = statement.executeQuery("SELECT * FROM worksheets")) {
+
+            while (resultSet.next()) {
+                String worksheetID = resultSet.getString("worksheet_id");
+                String workID = resultSet.getString("work_id");
+                String username = resultSet.getString("worker_username");
+                String details = resultSet.getString("worksheet_description");
+                String photo = resultSet.getString("worksheet_photo");
+                String status = resultSet.getString("worksheet_status");
+
+                Worksheet worksheet = new Worksheet(worksheetID, workID, username, details, photo, status);
+                allWorksheetList.add(worksheet);
             }
-        } catch (IOException e) {
+        } catch (SQLException e) {
             e.printStackTrace();
+            // Handle any SQL exceptions or errors here
         }
     }
 
-    public void saveDataToWorksheetsCSV(List<Worksheet> worksheetList) {
-        try (BufferedWriter writer = new BufferedWriter(new FileWriter("csv/worksheets.csv"))) {
+
+    public void saveDataToWorksheetsDatabase(List<Worksheet> worksheetList) {
+        try (Connection connection = DriverManager.getConnection(url, user, password);
+             Statement statement = connection.createStatement()) {
+
             for (Worksheet worksheet : worksheetList) {
-                writer.write(worksheet.getWorksheetID() + "," +
-                        worksheet.getWorkID() + "," +
-                        worksheet.getUsername() + "," +
-                        worksheet.getDetails() + "," +
-                        worksheet.getPhoto() + "," +
-                        worksheet.getStatus());
-                writer.newLine();
+                String updateQuery = "UPDATE worksheets SET " +
+                        "worksheet_description = '" + worksheet.getDetails() + "', " +
+                        "worksheet_photo = '" + worksheet.getPhoto() + "', " +
+                        "worksheet_status = '" + worksheet.getStatus() + "' " +
+                        "WHERE worksheet_id = '" + worksheet.getWorksheetID() + "'";
+                statement.executeUpdate(updateQuery);
             }
-        } catch (IOException e) {
+        } catch (SQLException e) {
             e.printStackTrace();
+            // Handle any SQL exceptions or errors here
         }
     }
+
+
 
     public void loadDataFromSelectedWorkCSV() {
         try (BufferedReader reader = new BufferedReader(new FileReader("csv/selected_work.csv"))) {
@@ -152,28 +162,28 @@ public class WorkerWorksheetController {
         }
     }
 
-    public void loadDataFromWorksheetsCSV() {
-        try (BufferedReader reader = new BufferedReader(new FileReader("csv/worksheets.csv"))) {
-            String line;
-            while ((line = reader.readLine()) != null) {
-                String[] parts = line.split(",");
-                if (parts.length == 6) { // Assuming there are 4 fields in the CSV
-                    String worksheetID = parts[0];
-                    String workID = parts[1];
-                    String username = parts[2];
-                    String details = parts[3];
-                    String photo = parts[4];
-                    String status = parts[5];
-                    if (Objects.equals(username, loginAccount.getUsername())) {
-                        Worksheet worksheet = new Worksheet(worksheetID, workID, username, details, photo, status);
-                        worksheetList.add(worksheet);
-                    }
-                }
+    public void loadDataFromWorksheetsDatabase() {
+        try (Connection connection = DriverManager.getConnection(url, user, password);
+             Statement statement = connection.createStatement();
+             ResultSet resultSet = statement.executeQuery("SELECT * FROM worksheets WHERE worker_username = '" + loginAccount.getUsername() + "'")) {
+
+            while (resultSet.next()) {
+                String worksheetID = resultSet.getString("worksheet_id");
+                String workID = resultSet.getString("work_id");
+                String username = resultSet.getString("worker_username");
+                String details = resultSet.getString("worksheet_description");
+                String photo = resultSet.getString("worksheet_photo");
+                String status = resultSet.getString("worksheet_status");
+
+                Worksheet worksheet = new Worksheet(worksheetID, workID, username, details, photo, status);
+                worksheetList.add(worksheet);
             }
-        } catch (IOException e) {
+        } catch (SQLException e) {
             e.printStackTrace();
+            // Handle any SQL exceptions or errors here
         }
     }
+
 
     public void handleSelectButtonAction() {
         FileChooser fileChooser = new FileChooser();
@@ -193,7 +203,7 @@ public class WorkerWorksheetController {
 
     public void handleSendButtonAction() {
         if (Objects.equals(selectedWorksheet.getPhoto(), "") && selectedFile == null){
-            saveDataToWorksheetsCSV(allWorksheetList);
+            saveDataToWorksheetsDatabase(allWorksheetList);
             checkedLabel.setText("ต้องมีรายละเอียดและรูปภาพก่อนส่งงาน");
             checkedLabel.setTextFill(Color.YELLOW);
             return;
@@ -228,11 +238,8 @@ public class WorkerWorksheetController {
                     }
                 }
             }
-
-
-
             // Save the updated worksheet data to CSV
-            saveDataToWorksheetsCSV(allWorksheetList);
+            saveDataToWorksheetsDatabase(allWorksheetList);
             checkedLabel.setText("ส่งงานเรียบร้อย รอตรวจสอบ");
             checkedLabel.setTextFill(Color.WHITE);
         } else {

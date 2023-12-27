@@ -16,9 +16,11 @@ import javafx.scene.control.cell.PropertyValueFactory;
 import javafx.scene.input.MouseEvent;
 
 import java.io.*;
+import java.sql.*;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
+import java.util.stream.Collectors;
 
 public class WorkerController {
     @FXML
@@ -40,13 +42,16 @@ public class WorkerController {
     private Account loginAccount;
     private List<Worksheet> worksheetList = new ArrayList<>();
     private List<Work> workList = new ArrayList<>();
+    String url = "jdbc:postgresql://db.wxxhmqjeruggsslfbkhs.supabase.co/postgres";
+    String user = "postgres"; // Replace with your DB username
+    String password = "8hlUWjTUakLNou2C"; // Replace with your DB password
 
     public void initialize() {
         detailsLabel.setText("-");
         loadDataFromLoggingInCSV();
         loginNameLabel.setText(loginAccount.getName());
-        loadDataFromWorksheetsCSV();
-        loadDataFromWorksCSV();
+        loadDataFromWorksheetsDatabase();
+        loadDataFromWorksDatabase();
         ObservableList<Work> observableWorks = FXCollections.observableArrayList(workList);
         workTable.setItems(observableWorks);
         idColumn.setCellValueFactory(new PropertyValueFactory<>("id"));
@@ -59,6 +64,8 @@ public class WorkerController {
             String worksheetStatus = findStatusOfWorksheet(workID);
             return new SimpleStringProperty(worksheetStatus);
         });
+        ObservableList<Work> filteredWorks = getFilteredWorks();
+        workTable.setItems(filteredWorks);
         workTable.getSelectionModel().selectedItemProperty().addListener((obs, oldSelection, newSelection) -> {
             if (newSelection != null) {
                 // Update the detailsLabel with the details of the selected plan
@@ -67,6 +74,13 @@ public class WorkerController {
                 detailsLabel.setText("-"); // Clear the label if no plan is selected
             }
         });
+    }
+
+    private ObservableList<Work> getFilteredWorks() {
+        List<Work> filteredList = workList.stream()
+                .filter(work -> !findStatusOfWorksheet(work.getId()).equals("Not Found"))
+                .collect(Collectors.toList());
+        return FXCollections.observableArrayList(filteredList);
     }
 
     public String findStatusOfWorksheet(String workID) {
@@ -111,55 +125,52 @@ public class WorkerController {
         }
     }
 
-    public void loadDataFromWorksCSV() {
-        try (BufferedReader reader = new BufferedReader(new FileReader("csv/works.csv"))) {
-            String line;
-            while ((line = reader.readLine()) != null) {
-                String[] parts = line.split(",");
-                if (parts.length == 7) { // Assuming there are 6 fields in the CSV
-                    String id = parts[0];
-                    String name = parts[1];
-                    String startDate = parts[2];
-                    String endDate = parts[3];
-                    String planID = parts[4];
-                    String details = parts[5];
-                    String status = parts[6];
+    public void loadDataFromWorksDatabase() {
+        try (Connection connection = DriverManager.getConnection(url, user, password);
+             Statement statement = connection.createStatement();
+             ResultSet resultSet = statement.executeQuery("SELECT * FROM works")) {
 
-                    for (Worksheet worksheet : worksheetList) {
-                        if (Objects.equals(worksheet.getWorkID(), id) && !Objects.equals(worksheet.getStatus(), "เสร็จสิ้น")) {
-                            Work work = new Work(id, name, startDate, endDate, planID, details, status);
-                            workList.add(work);
-                        }
-                    }
-                }
+            while (resultSet.next()) {
+                String id = resultSet.getString("work_id");
+                String name = resultSet.getString("work_name");
+                String startDate = resultSet.getString("work_start_date");
+                String endDate = resultSet.getString("work_end_date");
+                String planID = resultSet.getString("plan_id");
+                String details = resultSet.getString("work_description");
+                String status = resultSet.getString("work_status");
+
+                Work work = new Work(id, name, startDate, endDate, planID, details, status);
+                workList.add(work);
             }
-        } catch (IOException e) {
+        } catch (SQLException e) {
             e.printStackTrace();
         }
     }
 
-    public void loadDataFromWorksheetsCSV() {
-        try (BufferedReader reader = new BufferedReader(new FileReader("csv/worksheets.csv"))) {
-            String line;
-            while ((line = reader.readLine()) != null) {
-                String[] parts = line.split(",");
-                if (parts.length == 6) { // Assuming there are 4 fields in the CSV
-                    String worksheetID = parts[0];
-                    String workID = parts[1];
-                    String username = parts[2];
-                    String details = parts[3];
-                    String photo = parts[4];
-                    String status = parts[5];
-                    if (Objects.equals(username, loginAccount.getUsername())) {
-                        Worksheet worksheet = new Worksheet(worksheetID, workID, username, details, photo, status);
-                        worksheetList.add(worksheet);
-                    }
-                }
+    public void loadDataFromWorksheetsDatabase() {
+        try (Connection connection = DriverManager.getConnection(url, user, password);
+             Statement statement = connection.createStatement();
+             ResultSet resultSet = statement.executeQuery("SELECT * FROM worksheets " +
+                     "WHERE worker_username = '" + loginAccount.getUsername() + "' " +
+                     "AND worksheet_status != 'เสร็จสิ้น'")) {
+
+            while (resultSet.next()) {
+                String worksheetID = resultSet.getString("worksheet_id");
+                String workID = resultSet.getString("work_id");
+                String username = resultSet.getString("worker_username");
+                String details = resultSet.getString("worksheet_description");
+                String photo = resultSet.getString("worksheet_photo");
+                String status = resultSet.getString("worksheet_status");
+
+                Worksheet worksheet = new Worksheet(worksheetID, workID, username, details, photo, status);
+                worksheetList.add(worksheet);
             }
-        } catch (IOException e) {
+        } catch (SQLException e) {
             e.printStackTrace();
         }
     }
+
+
 
     public void handleWorkDoubleClickAction(MouseEvent mouseEvent) {
         if (mouseEvent.getClickCount() == 2) { // Check for a double click

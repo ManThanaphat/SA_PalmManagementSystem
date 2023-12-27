@@ -11,6 +11,7 @@ import javafx.scene.control.ListView;
 import java.io.BufferedReader;
 import java.io.FileReader;
 import java.io.IOException;
+import java.sql.*;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -23,11 +24,38 @@ public class AdminWorkerController {
     private Label workerCountLabel;
     private Account loginAccount;
     private List<String> workerList = new ArrayList<>();
+    String url = "jdbc:postgresql://db.wxxhmqjeruggsslfbkhs.supabase.co/postgres";
+    String user = "postgres"; // Replace with your DB username
+    String password = "8hlUWjTUakLNou2C"; // Replace with your DB password
 
     public void initialize() {
         loadDataFromLoggingInCSV();
         loginNameLabel.setText(loginAccount.getName());
-        loadDataFromAccountsCSV();
+
+        String sqlCheckEqual = "SELECT * FROM accounts WHERE is_admin = ?";
+
+        try (Connection conn = DriverManager.getConnection(url, user, password);
+             PreparedStatement pst = conn.prepareStatement(sqlCheckEqual)) {
+
+            pst.setBoolean(1, false);
+
+            try (ResultSet rs = pst.executeQuery()) {
+                while (rs.next()) {
+                    // Assuming your Account class has a constructor that takes these parameters
+                    Account account = new Account(
+                            rs.getString("username"),
+                            rs.getString("name"),
+                            rs.getString("password"),
+                            rs.getBoolean("is_admin")
+                    );
+                    workerList.add(account.getName());
+                }
+            }
+
+        } catch (SQLException e) {
+            e.printStackTrace(); // In production, consider a more robust error handling mechanism
+        }
+
         int workerCount = workerList.size();
         workerCountLabel.setText(workerCount + " คน");
         ObservableList<String> observableNames = FXCollections.observableArrayList(workerList);
@@ -45,22 +73,6 @@ public class AdminWorkerController {
                     String password = parts[2];
                     boolean isAdmin = Boolean.parseBoolean(parts[3]);
                     loginAccount = new Account(username, name, password, isAdmin);
-                }
-            }
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-    }
-
-    public void loadDataFromAccountsCSV() {
-        try (BufferedReader reader = new BufferedReader(new FileReader("csv/accounts.csv"))) {
-            String line;
-            while ((line = reader.readLine()) != null) {
-                String[] parts = line.split(",");
-                if (parts.length == 4) { // Assuming there are 4 fields in the CSV
-                    String name = parts[1];
-                    boolean isAdmin = Boolean.parseBoolean(parts[3]);
-                    if (!isAdmin) workerList.add(name);
                 }
             }
         } catch (IOException e) {

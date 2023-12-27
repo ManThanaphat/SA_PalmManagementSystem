@@ -18,6 +18,7 @@ import javafx.scene.input.MouseEvent;
 import javafx.stage.Stage;
 
 import java.io.*;
+import java.sql.*;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -43,14 +44,15 @@ public class AdminPlanController {
     private ChoiceBox<String> statusChoiceBox;
     private Account loginAccount;
     private List<Plan> planList = new ArrayList<>();
+    String url = "jdbc:postgresql://db.wxxhmqjeruggsslfbkhs.supabase.co/postgres";
+    String user = "postgres"; // Replace with your DB username
+    String password = "8hlUWjTUakLNou2C"; // Replace with your DB password
 
     public void initialize() {
         loadDataFromLoggingInCSV();
         loginNameLabel.setText(loginAccount.getName());
-
         detailsLabel.setText("-");
-
-        loadDataFromPlansCSV();
+        loadDataFromPlansDatabase();
         ObservableList<Plan> observablePlans = FXCollections.observableArrayList(planList);
         planTable.setItems(observablePlans);
         idColumn.setCellValueFactory(new PropertyValueFactory<>("id"));
@@ -89,41 +91,27 @@ public class AdminPlanController {
         }
     }
 
-    public void loadDataFromPlansCSV() {
-        try (BufferedReader reader = new BufferedReader(new FileReader("csv/plans.csv"))) {
-            String line;
-            while ((line = reader.readLine()) != null) {
-                String[] parts = line.split(",");
-                if (parts.length == 6) { // Assuming there are 6 fields in the CSV
-                    String id = parts[0];
-                    String name = parts[1];
-                    String startDate = parts[2];
-                    String endDate = parts[3];
-                    String details = parts[4];
-                    String status = parts[5];
+    public void loadDataFromPlansDatabase() {
+        String sqlQuery = "SELECT * FROM plans";
 
-                    Plan plan = new Plan(id, name, startDate, endDate, details, status);
-                    planList.add(plan);
-                }
-            }
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-    }
+        try (Connection conn = DriverManager.getConnection(url, user, password);
+             PreparedStatement pst = conn.prepareStatement(sqlQuery);
+             ResultSet rs = pst.executeQuery()) {
 
-    public void saveDataToPlansCSV(List<Plan> planList) {
-        try (BufferedWriter writer = new BufferedWriter(new FileWriter("csv/plans.csv"))) {
-            for (Plan plan : planList) {
-                writer.write(plan.getId() + "," +
-                        plan.getName() + "," +
-                        plan.getStartDate() + "," +
-                        plan.getEndDate() + "," +
-                        plan.getDetails() + "," +
-                        plan.getStatus());
-                writer.newLine();
+            while (rs.next()) {
+                String id = rs.getString("plan_id");
+                String name = rs.getString("plan_name");
+                String startDate = rs.getString("plan_start_date");
+                String endDate = rs.getString("plan_end_date");
+                String details = rs.getString("plan_description");
+                String status = rs.getString("plan_status");
+
+                Plan plan = new Plan(id, name, startDate, endDate, details, status);
+                planList.add(plan);
             }
-        } catch (IOException e) {
-            e.printStackTrace();
+
+        } catch (SQLException e) {
+            e.printStackTrace(); // Handle or log the exception as needed
         }
     }
 
@@ -146,10 +134,30 @@ public class AdminPlanController {
         if (selectedPlan != null && newStatus != null) {
             // Change the status of the selected plan
             selectedPlan.setStatus(newStatus);
+
+            // Update the status in the database
+            updateStatusInDatabase(selectedPlan.getId(), newStatus);
+
+            // Refresh the TableView if needed
             planTable.refresh();
-            saveDataToPlansCSV(planList);
         }
     }
+
+    public void updateStatusInDatabase(String planId, String newStatus) {
+        String sqlUpdate = "UPDATE plans SET plan_status = ? WHERE plan_id = ?";
+
+        try (Connection conn = DriverManager.getConnection(url, user, password);
+             PreparedStatement pst = conn.prepareStatement(sqlUpdate)) {
+
+            pst.setString(1, newStatus);
+            pst.setString(2, planId);
+            pst.executeUpdate();
+
+        } catch (SQLException e) {
+            e.printStackTrace(); // Handle or log the exception as needed
+        }
+    }
+
 
     public void handleLogoutButtonAction() {
         PageNavigator.navigateToPage("/com/example/project02/views/home.fxml");

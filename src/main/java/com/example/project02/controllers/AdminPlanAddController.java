@@ -14,6 +14,7 @@ import javafx.scene.control.cell.PropertyValueFactory;
 import javafx.scene.paint.Color;
 
 import java.io.*;
+import java.sql.*;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
@@ -22,8 +23,6 @@ import java.util.Objects;
 public class AdminPlanAddController {
     @FXML
     private Label loginNameLabel;
-    @FXML
-    private TextField idField;
     @FXML
     private TextField nameField;
     @FXML
@@ -36,12 +35,15 @@ public class AdminPlanAddController {
     private Label addedLabel;
     private Account loginAccount;
     private List<Plan> planList = new ArrayList<>();
+    String url = "jdbc:postgresql://db.wxxhmqjeruggsslfbkhs.supabase.co/postgres";
+    String user = "postgres"; // Replace with your DB username
+    String password = "8hlUWjTUakLNou2C"; // Replace with your DB password
 
     public void initialize() {
         loadDataFromLoggingInCSV();
         loginNameLabel.setText(loginAccount.getName());
         addedLabel.setText("");
-        loadDataFromPlansCSV();
+        loadDataFromPlansDatabase();
     }
 
     public void loadDataFromLoggingInCSV() {
@@ -62,79 +64,82 @@ public class AdminPlanAddController {
         }
     }
 
-    public void loadDataFromPlansCSV() {
-        try (BufferedReader reader = new BufferedReader(new FileReader("csv/plans.csv"))) {
-            String line;
-            while ((line = reader.readLine()) != null) {
-                String[] parts = line.split(",");
-                if (parts.length == 6) { // Assuming there are 6 fields in the CSV
-                    String id = parts[0];
-                    String name = parts[1];
-                    String startDate = parts[2];
-                    String endDate = parts[3];
-                    String details = parts[4];
-                    String status = parts[5];
+    public void loadDataFromPlansDatabase() {
+        String sqlSelect = "SELECT * FROM plans";
 
-                    Plan plan = new Plan(id, name, startDate, endDate, details, status);
-                    planList.add(plan);
-                }
+        try (Connection conn = DriverManager.getConnection(url, user, password);
+             PreparedStatement pst = conn.prepareStatement(sqlSelect);
+             ResultSet rs = pst.executeQuery()) {
+
+            while (rs.next()) {
+                String id = rs.getString("plan_id");
+                String name = rs.getString("plan_name");
+                String startDate = rs.getString("plan_start_date");
+                String endDate = rs.getString("plan_end_date");
+                String details = rs.getString("plan_description");
+                String status = rs.getString("plan_status");
+
+                Plan plan = new Plan(id, name, startDate, endDate, details, status);
+                planList.add(plan);
             }
-        } catch (IOException e) {
-            e.printStackTrace();
+        } catch (SQLException e) {
+            e.printStackTrace(); // Handle or log the exception as needed
         }
     }
 
-    public void saveDataToPlansCSV(List<Plan> planList) {
-        try (BufferedWriter writer = new BufferedWriter(new FileWriter("csv/plans.csv"))) {
-            for (Plan plan : planList) {
-                writer.write(plan.getId() + "," +
-                        plan.getName() + "," +
-                        plan.getStartDate() + "," +
-                        plan.getEndDate() + "," +
-                        plan.getDetails() + "," +
-                        plan.getStatus());
-                writer.newLine();
-            }
-        } catch (IOException e) {
-            e.printStackTrace();
+    public void saveDataToPlansDatabase(Plan newPlan) {
+        String sqlInsert = "INSERT INTO plans (plan_id, plan_name, plan_start_date, plan_end_date, plan_description, plan_status) VALUES (?, ?, ?, ?, ?, ?)";
+
+        try (Connection conn = DriverManager.getConnection(url, user, password);
+             PreparedStatement pst = conn.prepareStatement(sqlInsert)) {
+
+            pst.setString(1, newPlan.getId());
+            pst.setString(2, newPlan.getName());
+
+            // Use setDate for the date columns
+            pst.setDate(3, java.sql.Date.valueOf(newPlan.getStartDate()));
+            pst.setDate(4, java.sql.Date.valueOf(newPlan.getEndDate()));
+
+            pst.setString(5, newPlan.getDetails());
+            pst.setString(6, newPlan.getStatus());
+
+            pst.executeUpdate();
+        } catch (SQLException e) {
+            e.printStackTrace(); // Handle or log the exception as needed
         }
     }
+
     public void handleAddButtonAction() {
-        String id = idField.getText();
         String name = nameField.getText();
-        String startDateText = startDatePicker.getEditor().getText();
-        String endDateText = endDatePicker.getEditor().getText();
+        String startDateText = String.valueOf(startDatePicker.getValue());
+        String endDateText = String.valueOf(endDatePicker.getValue());
         String details = detailsArea.getText();
 
         String errorMessage = "";
 
-        if (Objects.equals(id, "") || Objects.equals(name, "") || Objects.equals(details, "")) {
+        if (Objects.equals(name, "") || Objects.equals(details, "")) {
             errorMessage = "กรอกข้อมูลให้ครบถ้วน";
         } else if (Objects.equals(startDateText, "") || Objects.equals(endDateText, "")) {
             errorMessage = "กรุณาเลือกวันที่เริ่มและสิ้นสุด";
         } else {
             LocalDate startDate = startDatePicker.getValue();
             LocalDate endDate = endDatePicker.getValue();
+            LocalDate today = LocalDate.now(); // Get today's date
 
-            if (startDate.isAfter(endDate)) {
+            if (startDate.isBefore(today)) {
+                errorMessage = "วันที่เริ่มต้องไม่น้อยกว่าวันที่ปัจจุบัน";
+            } else if (startDate.isAfter(endDate)) {
                 errorMessage = "วันที่เริ่มต้นต้องอยู่ก่อนวันที่สิ้นสุด";
-            } else {
-                for (Plan existingPlan : planList) {
-                    if (existingPlan.getId().equals(id)) {
-                        errorMessage = "กรุณากรอก ID ใหม่ เนื่องจากซ้ำกับแผนงานอื่น";
-                        break;
-                    }
-                }
             }
         }
 
         if (errorMessage.isEmpty()) {
-            Plan newPlan = new Plan(id, name, startDateText, endDateText, details, "ยังไม่เริ่มต้น");
+            int nextId = planList.size() + 1; // Generate ID based on the size of the planList
+            Plan newPlan = new Plan(String.valueOf(nextId), name, startDateText, endDateText, details, "ยังไม่เริ่มต้น");
             planList.add(newPlan);
-            saveDataToPlansCSV(planList);
+            saveDataToPlansDatabase(newPlan);
             addedLabel.setText("เพิ่มแผนงานสำเร็จ");
             addedLabel.setTextFill(Color.GREEN);
-            idField.clear();
             nameField.clear();
             detailsArea.clear();
         } else {
@@ -142,6 +147,7 @@ public class AdminPlanAddController {
             addedLabel.setTextFill(Color.RED);
         }
     }
+
 
 
     public void handleLogoutButtonAction() {

@@ -13,6 +13,7 @@ import javafx.scene.control.cell.PropertyValueFactory;
 import javafx.scene.input.MouseEvent;
 
 import java.io.*;
+import java.sql.*;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
@@ -40,13 +41,16 @@ public class AdminWorkDetailsController {
     private List<String> workerList = new ArrayList<>();
     private List<Worksheet> worksheetList = new ArrayList<>();
     private List<Worksheet> allWorksheetList = new ArrayList<>();
+    String url = "jdbc:postgresql://db.wxxhmqjeruggsslfbkhs.supabase.co/postgres";
+    String user = "postgres"; // Replace with your DB username
+    String password = "8hlUWjTUakLNou2C"; // Replace with your DB password
 
     public void initialize() {
         loadDataFromLoggingInCSV();
         loadDataFromSelectedWorkCSV();
-        loadDataFromWorksheetsCSV();
-        loadDataFromAccountsCSV();
-        loadDataFromWorksheetsCSVAll();
+        loadDataFromWorksheetsDatabase();
+        loadDataFromAccountsDatabase();
+        loadDataFromWorksheetsDatabaseAll();
         loginNameLabel.setText(loginAccount.getName());
         workLabel.setText("work ID " + work.getId() + " : " + work.getName());
         detailsLabel.setText(work.getDetails());
@@ -112,70 +116,71 @@ public class AdminWorkDetailsController {
     }
 
 
-    public void loadDataFromAccountsCSV() {
-        try (BufferedReader reader = new BufferedReader(new FileReader("csv/accounts.csv"))) {
-            String line;
-            while ((line = reader.readLine()) != null) {
-                String[] parts = line.split(",");
-                if (parts.length == 4) { // Assuming there are 4 fields in the CSV
-                    String username = parts[0];
-                    String name = parts[1];
-                    String password = parts[2];
-                    boolean isAdmin = Boolean.parseBoolean(parts[3]);
-                    if (!isAdmin) {
-                        Account worker = new Account(username,name,password,isAdmin);
-                        allWorkerList.add(worker);
-                        workersChoiceBox.getItems().add(worker.getName());
-                    }
+    private void loadDataFromAccountsDatabase() {
+        try (Connection connection = DriverManager.getConnection(url, user, password);
+             Statement statement = connection.createStatement();
+             ResultSet resultSet = statement.executeQuery("SELECT * FROM accounts WHERE is_admin = false")) {
+
+            while (resultSet.next()) {
+                String username = resultSet.getString("username");
+                String name = resultSet.getString("name");
+                String password = resultSet.getString("password");
+                boolean isAdmin = resultSet.getBoolean("is_admin");
+
+                if (!isAdmin) {
+                    Account worker = new Account(username, name, password, isAdmin);
+                    allWorkerList.add(worker);
+                    workersChoiceBox.getItems().add(worker.getName());
                 }
             }
-        } catch (IOException e) {
+        } catch (SQLException e) {
             e.printStackTrace();
         }
     }
-    public void loadDataFromWorksheetsCSV() {
-        try (BufferedReader reader = new BufferedReader(new FileReader("csv/worksheets.csv"))) {
-            String line;
-            while ((line = reader.readLine()) != null) {
-                String[] parts = line.split(",");
-                if (parts.length == 6) { // Assuming there are 4 fields in the CSV
-                    String worksheetID = parts[0];
-                    String workID = parts[1];
-                    String username = parts[2];
-                    String details = parts[3];
-                    String photo = parts[4];
-                    String status = parts[5];
-                    Worksheet worksheet = new Worksheet(worksheetID,workID,username,details,photo,status);
-                    if (Objects.equals(workID, work.getId())) {
-                        worksheetList.add(worksheet);
-                    }
-                }
+    public void loadDataFromWorksheetsDatabase() {
+        try (Connection connection = DriverManager.getConnection(url, user, password);
+             Statement statement = connection.createStatement();
+             ResultSet resultSet = statement.executeQuery("SELECT * FROM worksheets WHERE work_id = '" + work.getId() + "'")) {
+
+            while (resultSet.next()) {
+                String worksheetID = resultSet.getString("worksheet_id");
+                String workID = resultSet.getString("work_id");
+                String username = resultSet.getString("worker_username"); // Corrected column name
+                String details = resultSet.getString("worksheet_description");
+                String photo = resultSet.getString("worksheet_photo");
+                String status = resultSet.getString("worksheet_status");
+
+                Worksheet worksheet = new Worksheet(worksheetID, workID, username, details, photo, status);
+                worksheetList.add(worksheet);
             }
-        } catch (IOException e) {
+        } catch (SQLException e) {
             e.printStackTrace();
         }
     }
 
-    public void loadDataFromWorksheetsCSVAll() {
-        try (BufferedReader reader = new BufferedReader(new FileReader("csv/worksheets.csv"))) {
-            String line;
-            while ((line = reader.readLine()) != null) {
-                String[] parts = line.split(",");
-                if (parts.length == 6) { // Assuming there are 4 fields in the CSV
-                    String worksheetID = parts[0];
-                    String workID = parts[1];
-                    String username = parts[2];
-                    String details = parts[3];
-                    String photo = parts[4];
-                    String status = parts[5];
-                    Worksheet worksheet = new Worksheet(worksheetID,workID,username,details,photo,status);
-                    allWorksheetList.add(worksheet);
-                }
+
+
+    public void loadDataFromWorksheetsDatabaseAll() {
+        try (Connection connection = DriverManager.getConnection(url, user, password);
+             Statement statement = connection.createStatement();
+             ResultSet resultSet = statement.executeQuery("SELECT * FROM worksheets")) {
+
+            while (resultSet.next()) {
+                String worksheetID = resultSet.getString("worksheet_id");
+                String workID = resultSet.getString("work_id");
+                String username = resultSet.getString("worker_username"); // Corrected column name
+                String details = resultSet.getString("worksheet_description");
+                String photo = resultSet.getString("worksheet_photo");
+                String status = resultSet.getString("worksheet_status");
+
+                Worksheet worksheet = new Worksheet(worksheetID, workID, username, details, photo, status);
+                allWorksheetList.add(worksheet);
             }
-        } catch (IOException e) {
+        } catch (SQLException e) {
             e.printStackTrace();
         }
     }
+
 
     public void loadDataFromSelectedWorkCSV() {
         try (BufferedReader reader = new BufferedReader(new FileReader("csv/selected_work.csv"))) {
@@ -226,22 +231,6 @@ public class AdminWorkDetailsController {
         }
     }
 
-    public void saveDataToWorksheetsCSV(List<Worksheet> worksheetList) {
-        try (BufferedWriter writer = new BufferedWriter(new FileWriter("csv/worksheets.csv"))) {
-            for (Worksheet worksheet : worksheetList) {
-                writer.write(worksheet.getWorksheetID() + "," +
-                        worksheet.getWorkID() + "," +
-                        worksheet.getUsername() + "," +
-                        worksheet.getDetails() + "," +
-                        worksheet.getPhoto() + "," +
-                        worksheet.getStatus());
-                writer.newLine();
-            }
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-    }
-
     public void handleLogoutButtonAction() {
         PageNavigator.navigateToPage("/com/example/project02/views/home.fxml");
     }
@@ -249,6 +238,26 @@ public class AdminWorkDetailsController {
     public void handleBackButtonAction() {
         PageNavigator.navigateToPage("/com/example/project02/views/adminPlanWork.fxml");
     }
+
+    public void addDataToWorksheetsDatabase(Worksheet newWorksheet) {
+        try (Connection connection = DriverManager.getConnection(url, user, password);
+             PreparedStatement preparedStatement = connection.prepareStatement(
+                     "INSERT INTO worksheets (worksheet_id, work_id, worker_username, worksheet_description, worksheet_photo, worksheet_status) VALUES (?, ?, ?, ?, ?, ?)")) {
+
+            preparedStatement.setString(1, newWorksheet.getWorksheetID());
+            preparedStatement.setString(2, newWorksheet.getWorkID());
+            preparedStatement.setString(3, newWorksheet.getUsername());
+            preparedStatement.setString(4, newWorksheet.getDetails());
+            preparedStatement.setString(5, newWorksheet.getPhoto());
+            preparedStatement.setString(6, newWorksheet.getStatus());
+
+            preparedStatement.executeUpdate();
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+    }
+
+
 
     public void handleAddButtonAction() {
         String workerName = workersChoiceBox.getValue();
@@ -265,8 +274,8 @@ public class AdminWorkDetailsController {
             // Add the newWorksheet to the worksheetList
             worksheetList.add(newWorksheet);
 
-            // Save the updated worksheetList to the worksheets.csv file
-            saveDataToWorksheetsCSV(worksheetList);
+            // Save the updated worksheetList to the database
+            addDataToWorksheetsDatabase(newWorksheet);
 
             // Remove the selected worker from the workersChoiceBox
             workersChoiceBox.getItems().remove(workerName);
@@ -332,6 +341,17 @@ public class AdminWorkDetailsController {
         return 0; // Default to 0 if unable to extract a valid ID.
     }
 
+    public void removeDataToWorksheetsDatabase(Worksheet worksheet) {
+        try (Connection connection = DriverManager.getConnection(url, user, password)) {
+            String sql = "DELETE FROM worksheets WHERE worksheet_id = ?";
+            try (PreparedStatement statement = connection.prepareStatement(sql)) {
+                statement.setString(1, worksheet.getWorksheetID());
+                statement.executeUpdate();
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+    }
 
     public void handleEraseButtonAction() {
         Worksheet selectedWorksheet = workersTable.getSelectionModel().getSelectedItem();
@@ -342,8 +362,8 @@ public class AdminWorkDetailsController {
             // Remove the selected worksheet from the worksheetList
             worksheetList.remove(selectedWorksheet);
 
-            // Save the updated worksheetList to the worksheets.csv file
-            saveDataToWorksheetsCSV(worksheetList);
+            // Save the updated worksheetList to the database
+            removeDataToWorksheetsDatabase(selectedWorksheet);
 
             // Add the worker's name back to the workersChoiceBox
             String workerName = getWorkerNameByUsername(selectedWorksheet.getUsername());
@@ -352,8 +372,6 @@ public class AdminWorkDetailsController {
             }
         }
     }
-
-
 
     // Helper method to get the worker's name by username
     private String getWorkerNameByUsername(String username) {

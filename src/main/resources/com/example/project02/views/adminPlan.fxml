@@ -71,23 +71,23 @@
          <font>
             <Font size="15.0" />
          </font></Button>
-      <Rectangle arcHeight="5.0" arcWidth="5.0" fill="#def25d" height="70.0" layoutY="1.0" stroke="#def25d" strokeType="INSIDE" width="800.0" />
-      <Label layoutX="25.0" layoutY="14.0" text="ผู้ดูแล |" textFill="#506405">
+      <Rectangle arcHeight="5.0" arcWidth="5.0" fill="#def25d" height="70.0" stroke="#def25d" strokeType="INSIDE" width="800.0" />
+      <Label layoutX="25.0" layoutY="13.0" text="ผู้ดูแล |" textFill="#506405">
          <font>
             <Font size="15.0" />
          </font>
       </Label>
-      <Label fx:id="loginNameLabel" layoutX="92.0" layoutY="14.0" text="loginNameLabel" textFill="#506405">
+      <Label fx:id="loginNameLabel" layoutX="92.0" layoutY="13.0" text="loginNameLabel" textFill="#506405">
          <font>
             <Font size="15.0" />
          </font>
       </Label>
-      <Button layoutX="703.0" layoutY="20.0" mnemonicParsing="false" onAction="#handleLogoutButtonAction" text="ลงชื่อออก">
+      <Button layoutX="703.0" layoutY="19.0" mnemonicParsing="false" onAction="#handleLogoutButtonAction" text="ลงชื่อออก">
          <font>
             <Font size="15.0" />
          </font>
       </Button>
-      <Label layoutX="104.0" layoutY="35.0" text="จัดการแผนงาน" textFill="#506405">
+      <Label layoutX="104.0" layoutY="34.0" text="จัดการแผนงาน" textFill="#506405">
          <font>
             <Font name="System Bold" size="15.0" />
          </font>
@@ -97,7 +97,7 @@
             <Font size="15.0" />
          </font>
       </Button>
-      <Label layoutX="25.0" layoutY="35.0" text="หน้าหลัก &gt;&gt; " textFill="#506405">
+      <Label layoutX="25.0" layoutY="34.0" text="หน้าหลัก &gt;&gt; " textFill="#506405">
          <font>
             <Font size="15.0" />
          </font>

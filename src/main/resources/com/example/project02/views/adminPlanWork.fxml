@@ -51,7 +51,7 @@
             <Font name="System Bold" size="17.0" />
          </font>
       </Label>
-      <Button layoutX="613.0" layoutY="103.0" mnemonicParsing="false" onAction="#handleAssignButtonAction" text="มอบหมายงาน">
+      <Button fx:id="assignButton" layoutX="613.0" layoutY="103.0" mnemonicParsing="false" onAction="#handleAssignButtonAction" text="มอบหมายงาน">
          <font>
             <Font size="15.0" />
          </font></Button>
